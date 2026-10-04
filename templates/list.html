@@ -1,0 +1,102 @@
+{{define "title"}}Candidatures{{end}}
+{{define "content"}}
+<div class="page-title">
+  <h1>Suivi de mes candidatures de stage</h1>
+</div>
+
+<section class="kpis" aria-label="Compteurs (cliquer pour filtrer)">
+  <button type="button" class="kpi" data-filter="all" aria-pressed="true"><span class="kpi-label">Total</span><span class="kpi-value" data-count="total">{{.Counts.total}}</span></button>
+  {{range .Groups}}<button type="button" class="kpi kpi-{{.Code}}" data-filter="{{.Code}}" aria-pressed="false"><span class="kpi-label">{{.Label}}</span><span class="kpi-value" data-count="{{.Code}}">{{index $.Counts .Code}}</span></button>
+  {{end}}<button type="button" class="kpi kpi-due" data-filter="due" aria-pressed="false"><span class="kpi-label">À relancer</span><span class="kpi-value" data-count="due">{{.Counts.due}}</span></button>
+</section>
+
+{{if or .Events .DueRows}}
+<section class="agenda">
+  {{if .Events}}
+  <div class="agenda-col">
+    <h2>À venir</h2>
+    <ul>
+      {{range .Events}}<li><a href="/applications/{{.ApplicationID}}#section-{{.ID}}"><span class="agenda-date">{{fmtEvent .EventDate}}</span> <strong>{{.Company}}</strong> · {{.Title}}</a></li>
+      {{end}}
+    </ul>
+  </div>
+  {{end}}
+  {{if .DueRows}}
+  <div class="agenda-col">
+    <h2>À relancer</h2>
+    <ul>
+      {{range .DueRows}}<li><a href="/applications/{{.ID}}"><strong>{{.Company}}</strong>{{if .Title}} · {{truncate .Title 45}}{{end}}</a>
+        <span class="muted">{{if .NextStep}}{{truncate .NextStep 50}}{{else if .NextDate}}prévu le {{fmtDate .NextDate}}{{else}}envoyée il y a {{.Days}} j{{end}}</span></li>
+      {{end}}
+    </ul>
+  </div>
+  {{end}}
+</section>
+{{end}}
+
+{{if .Rows}}
+<div class="toolbar">
+  <input type="search" id="search" placeholder="Rechercher (entreprise, poste, lieu, notes…)" aria-label="Rechercher">
+  <label class="check"><input type="checkbox" id="hide-closed"> Masquer refusées / abandonnées</label>
+  <span class="muted" id="row-count"></span>
+</div>
+
+<div class="table-wrap">
+<table class="grid" id="grid">
+  <colgroup>
+    <col style="width:165px"><col style="width:230px"><col style="width:145px"><col style="width:125px">
+    <col style="width:135px"><col style="width:96px"><col style="width:74px"><col style="width:64px">
+    <col style="width:165px"><col style="width:190px"><col style="width:96px"><col style="width:210px"><col>
+  </colgroup>
+  <thead>
+    <tr>
+      <th data-type="text">Entreprise</th>
+      <th data-type="text">Offre de stage</th>
+      <th data-type="text">Lien de l'offre</th>
+      <th data-type="text">Lieu</th>
+      <th data-type="text">Mode de candidature</th>
+      <th data-type="text">Date de candidature</th>
+      <th data-type="num">Salaire (€/mois)</th>
+      <th data-type="num">Durée (mois)</th>
+      <th data-type="text">Contact</th>
+      <th data-type="num">Statut</th>
+      <th data-type="num" title="Jours depuis la candidature">Jours depuis candidature</th>
+      <th data-type="text">Prochaine étape / relance</th>
+      <th data-type="text">Notes</th>
+    </tr>
+  </thead>
+  <tbody>
+  {{range .Rows}}
+    <tr data-id="{{.ID}}" data-group="{{.Group}}" data-closed="{{if or (eq .Status "refusee") (eq .Status "abandon")}}1{{end}}" data-due="{{if .Due}}1{{end}}"
+        data-search="{{.Company}} {{.Title}} {{.Location}} {{.Method}} {{.Source}} {{.Contact}} {{.NextStep}} {{.Notes}}"{{if .Due}} class="is-due"{{end}}>
+      <td data-v="{{.Company}}" class="c-company"><a class="rowlink" href="/applications/{{.ID}}">{{.Company}}</a></td>
+      <td data-v="{{.Title}}" class="c-title" title="{{.Title}}">{{.Title}}</td>
+      <td data-v="{{.Link}}" class="c-link">{{with .Link}}<a href="{{.}}" target="_blank" rel="noopener" title="{{.}}">{{host .}}</a>{{end}}{{$n := len (urls .URL)}}{{if gt $n 1}} <span class="mini">+{{add $n -1}}</span>{{end}}</td>
+      <td data-v="{{.Location}}">{{.Location}}</td>
+      <td data-v="{{.Method}}">{{.Method}}</td>
+      <td data-v="{{.AppliedOn}}" class="c-date">{{fmtDate .AppliedOn}}</td>
+      <td data-v="{{.Salary}}" class="num">{{.Salary}}</td>
+      <td data-v="{{.Duration}}" class="num">{{.Duration}}</td>
+      <td data-v="{{.Contact}}" class="c-contact">{{contact .Contact}}</td>
+      <td data-v="{{statusRank .Status}}" class="c-status">
+        <select class="status-select st-{{.Status}}" data-id="{{.ID}}" aria-label="Statut de {{.Company}}">
+          {{$st := .Status}}{{range statusesList}}<option value="{{.Code}}"{{if eq .Code $st}} selected{{end}}>{{.Label}}</option>{{end}}
+        </select>
+      </td>
+      <td data-v="{{if .HasDays}}{{.Days}}{{end}}" class="num">{{if .HasDays}}{{.Days}}{{end}}</td>
+      <td data-v="{{.NextDate}}" class="c-next">{{if .NextDate}}<span class="chip{{if .Due}} chip-late{{end}}">{{fmtDate .NextDate}}</span> {{end}}{{.NextStep}}{{if and .Due (not .NextDate)}} <span class="chip chip-late">à relancer</span>{{end}}</td>
+      <td data-v="{{.Notes}}" class="c-notes" title="{{.Notes}}">{{truncate .Notes 90}}</td>
+    </tr>
+  {{end}}
+  </tbody>
+</table>
+</div>
+<p class="hint">Clique sur un compteur pour filtrer, sur un en-tête pour trier, sur l'entreprise pour ouvrir la fiche. Le statut se change directement dans le tableau.</p>
+{{else}}
+<div class="empty card">
+  <h2>Aucune candidature pour l'instant</h2>
+  <p>Ajoute ta première candidature, ou importe ton tableau Excel actuel (.xlsx ou CSV) : les colonnes sont reconnues automatiquement.</p>
+  <p><a class="btn btn-primary" href="/new">+ Nouvelle candidature</a> <a class="btn" href="/data#import">Importer mon fichier Excel</a></p>
+</div>
+{{end}}
+{{end}}

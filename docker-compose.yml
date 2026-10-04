@@ -1,0 +1,38 @@
+services:
+  candidatures:
+    build: .
+    image: candidatures:latest
+    container_name: candidatures
+    restart: unless-stopped
+    ports:
+      - "8085:8080"            # http://<ip-du-pi>:8085 (change le port de gauche si déjà pris)
+    env_file:
+      - path: .env           # AUTH_USER, AUTH_PASSWORD, NTFY_URL… (facultatif)
+        required: false
+    volumes:
+      - ./data:/data           # base SQLite + fichiers joints : c'est ce dossier qu'il faut sauvegarder
+    environment:
+      TZ: Europe/Paris
+      # Délai (jours) après l'envoi au-delà duquel une relance est proposée
+      RELANCE_DAYS: "14"
+
+      # Adresse publique (lien des notifications et du marque-page)
+      # BASE_URL: https://candidatures.mondomaine.fr
+
+      # Authentification HTTP Basic : à activer avant toute exposition hors réseau local / Tailscale
+      # AUTH_USER: aurelien
+      # AUTH_PASSWORD: change-moi
+
+      # Rappel quotidien des relances et entretiens via ntfy
+      # NTFY_URL: http://ntfy:80/candidatures
+      # NTFY_TOKEN: tk_xxxxxxxx
+      # NOTIFY_HOUR: "9"
+
+    # Pour passer par Nginx Proxy Manager avec le nom du conteneur, rejoindre son réseau :
+    # networks:
+    #   - npm
+
+# networks:
+#   npm:
+#     external: true
+#     name: nginx-proxy-manager_default

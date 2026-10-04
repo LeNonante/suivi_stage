@@ -1,0 +1,6 @@
+data/
+*.db
+*.db-*
+.git/
+README.md
+docker-compose.yml

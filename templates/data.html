@@ -1,0 +1,79 @@
+{{define "title"}}Outils & export{{end}}
+{{define "content"}}
+<div class="page-title"><h1>Outils &amp; export</h1></div>
+
+<div class="tools-grid">
+  <section class="card">
+    <h2>Statistiques</h2>
+    {{if .Sent}}
+    <div class="stats">
+      <div><span class="stat-value">{{.Sent}}</span><span class="stat-label">candidatures envoyées</span></div>
+      <div><span class="stat-value">{{.Rate}} %</span><span class="stat-label">taux de réponse ({{.Responded}})</span></div>
+      <div><span class="stat-value">{{if .AvgN}}{{.AvgDays}} j{{else}}–{{end}}</span><span class="stat-label">délai moyen de réponse{{if .AvgN}} ({{.AvgN}}){{end}}</span></div>
+    </div>
+    <p class="hint">Réponse = entretien, test, offre ou refus. Le délai se calcule à partir des changements de statut faits ici.</p>
+    <div class="stat-tables">
+      <table class="mini-table">
+        <caption>Par mode de candidature</caption>
+        <thead><tr><th>Mode</th><th class="num">Envoyées</th><th class="num">Réponses</th></tr></thead>
+        <tbody>{{range .ByMethod}}<tr><td>{{.Label}}</td><td class="num">{{.Sent}}</td><td class="num">{{.Responded}} <span class="muted">({{.Rate}} %)</span></td></tr>{{end}}</tbody>
+      </table>
+      <table class="mini-table">
+        <caption>Par source</caption>
+        <thead><tr><th>Source</th><th class="num">Envoyées</th><th class="num">Réponses</th></tr></thead>
+        <tbody>{{range .BySource}}<tr><td>{{.Label}}</td><td class="num">{{.Sent}}</td><td class="num">{{.Responded}} <span class="muted">({{.Rate}} %)</span></td></tr>{{end}}</tbody>
+      </table>
+    </div>
+    {{else}}<p class="empty-inline">Les statistiques apparaîtront après tes premières candidatures envoyées.</p>{{end}}
+  </section>
+
+  <section class="card" id="import">
+    <h2>Importer</h2>
+    <p>Accepte ton tableau Excel (<strong>.xlsx</strong>) ou un <strong>CSV</strong> : la ligne d'en-tête est repérée automatiquement (colonne « Entreprise »), les autres colonnes sont associées par leur nom, les liens hypertexte sont récupérés. Accepte aussi un export <strong>.json</strong> ou une sauvegarde <strong>.zip</strong> de cette application.</p>
+    <form method="post" action="/import" enctype="multipart/form-data" class="import-form">
+      <input type="file" name="file" accept=".xlsx,.xlsm,.csv,.tsv,.json,.zip" required aria-label="Fichier à importer">
+      <fieldset class="radios">
+        <legend class="sr-only">Mode d'import</legend>
+        <label><input type="radio" name="mode" value="merge" checked> Ajouter <span class="muted">(les doublons sont ignorés)</span></label>
+        <label><input type="radio" name="mode" value="replace"> Tout remplacer <span class="muted">(restauration)</span></label>
+      </fieldset>
+      <button class="btn btn-primary" data-confirm-replace>Importer</button>
+    </form>
+  </section>
+
+  <section class="card">
+    <h2>Exporter</h2>
+    <ul class="export-list">
+      <li><a class="btn" href="/export.json" download>Export JSON</a> <span class="muted">toutes les données : candidatures, sections, historique, liste des fichiers</span></li>
+      <li><a class="btn" href="/export.csv" download>Export CSV (Excel)</a> <span class="muted">une ligne par candidature, s'ouvre directement dans Excel</span></li>
+      <li><a class="btn" href="/backup.zip" download>Sauvegarde complète (.zip)</a> <span class="muted">JSON + fichiers joints, se ré-importe ici</span></li>
+    </ul>
+    <p class="hint">API en lecture : <a href="/api/applications">/api/applications</a> et <code>/api/applications/{id}</code>.</p>
+  </section>
+
+  <section class="card">
+    <h2>Marque-page « Capturer l'offre »</h2>
+    <p>Glisse ce bouton dans ta barre de favoris :</p>
+    <p><a class="btn btn-accent bookmarklet" href="{{.Bookmarklet}}" onclick="alert('Glisse ce bouton dans ta barre de favoris, puis clique dessus depuis la page d\'une offre.'); return false;">＋ Capturer l'offre</a></p>
+    <p>Sur la page d'une annonce (Workday, Hellowork, WTTJ, LinkedIn…), clique dessus : un nouvel onglet s'ouvre avec le formulaire pré-rempli (lien, poste, entreprise, lieu) et le <strong>texte de l'offre archivé</strong>. Si tu sélectionnes un passage avant de cliquer, seul ce passage est gardé.</p>
+    <p class="hint">Le marque-page pointe vers <code>{{.Base}}</code>. Si tu changes d'adresse (domaine, Tailscale…), recrée-le depuis cette page. Quelques sites bloquent l'envoi de formulaires vers un autre domaine : dans ce cas, utilise « Remplir depuis le lien » ou copie-colle le texte.</p>
+  </section>
+
+  <section class="card">
+    <h2>Rappels</h2>
+    <p>Une relance est proposée quand sa date est atteinte, ou {{.RelanceDays}} jours après l'envoi s'il n'y en a pas (<code>RELANCE_DAYS</code>).</p>
+    {{if .Ntfy}}
+    <p>Notification ntfy chaque jour à {{.NotifyHour}} h vers <code>{{.Ntfy}}</code> s'il y a des relances ou des entretiens.</p>
+    <form method="post" action="/notify/test"><button class="btn">Envoyer une notification de test</button></form>
+    {{else}}
+    <p class="muted">Notifications désactivées. Renseigne <code>NTFY_URL</code> dans le docker-compose pour recevoir chaque matin les relances et entretiens du jour sur ton téléphone.</p>
+    {{end}}
+  </section>
+
+  <section class="card">
+    <h2>Accès</h2>
+    {{if .Auth}}<p>Protégé par identifiant / mot de passe (<code>AUTH_USER</code>).</p>
+    {{else}}<p class="alert alert-warn">Aucune authentification configurée. Garde l'application en accès local / Tailscale, ou définis <code>AUTH_USER</code> et <code>AUTH_PASSWORD</code> avant de l'exposer.</p>{{end}}
+  </section>
+</div>
+{{end}}

@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>{{block "title" .}}Candidatures{{end}} · Suivi de stage</title>
+<link rel="icon" href="/static/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="page-{{.Page}}">
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="/"><img src="/static/icon.svg" alt="" width="22" height="22"> Suivi de candidatures</a>
+    <nav class="nav">
+      <a href="/" {{if eq .Page "list"}}aria-current="page"{{end}}>Candidatures</a>
+      <a href="/data" {{if eq .Page "data"}}aria-current="page"{{end}}>Outils &amp; export</a>
+    </nav>
+    <a class="btn btn-accent" href="/new">+ Nouvelle candidature</a>
+  </div>
+</header>
+{{with .Flash}}<div class="flash" role="status"><div class="flash-inner">{{.}}</div></div>{{end}}
+<main class="wrap">
+{{template "content" .}}
+</main>
+<script src="/static/app.js" defer></script>
+</body>
+</html>

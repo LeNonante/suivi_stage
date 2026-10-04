@@ -1,0 +1,8 @@
+{{define "title"}}Erreur {{.Code}}{{end}}
+{{define "content"}}
+<div class="card empty">
+  <h1>Oups ({{.Code}})</h1>
+  <p>{{.Message}}</p>
+  <p><a class="btn" href="/">← Retour aux candidatures</a></p>
+</div>
+{{end}}

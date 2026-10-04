@@ -1,0 +1,104 @@
+{{define "title"}}{{if .IsNew}}Nouvelle candidature{{else}}Modifier {{.App.Company}}{{end}}{{end}}
+{{define "content"}}
+{{$a := .App}}
+<div class="page-title">
+  <a class="back" href="{{if .IsNew}}/{{else}}/applications/{{$a.ID}}{{end}}">← {{if .IsNew}}Candidatures{{else}}Retour à la fiche{{end}}</a>
+  <h1>{{if .IsNew}}Nouvelle candidature{{else}}Modifier · {{$a.Company}}{{end}}</h1>
+</div>
+
+{{with .Error}}<div class="alert alert-error">{{.}}</div>{{end}}
+{{if .Captured}}<div class="alert alert-info">Offre capturée depuis la page. Vérifie les champs, complète si besoin, puis enregistre.</div>{{end}}
+<div class="alert alert-warn" id="existing-alert"{{if not .ExistingID}} hidden{{end}}>Ce lien figure déjà dans ta liste : <a id="existing-link" href="/applications/{{.ExistingID}}">ouvrir la candidature existante</a>.</div>
+
+<form method="post" action="{{if .IsNew}}/applications{{else}}/applications/{{$a.ID}}{{end}}" class="card form" id="app-form">
+  <div class="form-grid">
+    <div class="field span-all">
+      <label for="f-url">Lien de l'offre <span class="hint">une URL par ligne si plusieurs</span></label>
+      <div class="input-row">
+        <textarea name="url" id="f-url" rows="1" class="autogrow" placeholder="https://…">{{$a.URL}}</textarea>
+        <button type="button" class="btn" id="fetch-btn">Remplir depuis le lien</button>
+      </div>
+      <p class="hint" id="fetch-msg" aria-live="polite"></p>
+    </div>
+
+    <div class="field">
+      <label for="f-company">Entreprise <span class="req">*</span></label>
+      <input name="company" id="f-company" required value="{{$a.Company}}" autocomplete="off">
+    </div>
+    <div class="field span-2">
+      <label for="f-title">Offre de stage</label>
+      <input name="title" id="f-title" value="{{$a.Title}}">
+    </div>
+
+    <div class="field">
+      <label for="f-location">Lieu</label>
+      <input name="location" id="f-location" value="{{$a.Location}}">
+    </div>
+    <div class="field">
+      <label for="f-method">Mode de candidature</label>
+      <input name="method" id="f-method" list="methods" value="{{$a.Method}}">
+    </div>
+    <div class="field">
+      <label for="f-source">Source</label>
+      <input name="source" id="f-source" list="sources" value="{{$a.Source}}" placeholder="LinkedIn, Hellowork…">
+    </div>
+
+    <div class="field">
+      <label for="f-status">Statut</label>
+      <select name="status" id="f-status">
+        {{range .Statuses}}<option value="{{.Code}}"{{if eq .Code $a.Status}} selected{{end}}>{{.Label}}</option>{{end}}
+      </select>
+    </div>
+    <div class="field">
+      <label for="f-applied">Date de candidature</label>
+      <input type="date" name="applied_on" id="f-applied" value="{{$a.AppliedOn}}">
+    </div>
+    <div class="field field-pair">
+      <div>
+        <label for="f-salary">Salaire (€/mois)</label>
+        <input name="salary" id="f-salary" value="{{$a.Salary}}" inputmode="decimal">
+      </div>
+      <div>
+        <label for="f-duration">Durée (mois)</label>
+        <input name="duration" id="f-duration" value="{{$a.Duration}}" inputmode="numeric">
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="f-contact">Contact</label>
+      <input name="contact" id="f-contact" value="{{$a.Contact}}" placeholder="Nom, e-mail ou lien">
+    </div>
+    <div class="field">
+      <label for="f-next-step">Prochaine étape / relance</label>
+      <input name="next_step" id="f-next-step" value="{{$a.NextStep}}" placeholder="Ex. relancer par mail">
+    </div>
+    <div class="field">
+      <label for="f-next">Date de relance</label>
+      <div class="input-row">
+        <input type="date" name="next_date" id="f-next" value="{{$a.NextDate}}">
+        <button type="button" class="btn btn-small" id="relance-btn" data-days="{{.RelanceDays}}" title="Date de candidature + {{.RelanceDays}} jours">J+{{.RelanceDays}}</button>
+      </div>
+    </div>
+
+    <div class="field span-all">
+      <label for="f-notes">Notes</label>
+      <textarea name="notes" id="f-notes" rows="3" class="autogrow">{{$a.Notes}}</textarea>
+    </div>
+    <div class="field span-all">
+      <label for="f-offer">Texte de l'offre <span class="hint">archivé ici, au cas où l'annonce disparaît</span></label>
+      <textarea name="offer_text" id="f-offer" rows="10">{{$a.OfferText}}</textarea>
+    </div>
+    <div class="field span-all">
+      <label for="f-letter">Lettre de motivation <span class="hint counter" data-for="f-letter"></span></label>
+      <textarea name="cover_letter" id="f-letter" rows="10">{{$a.CoverLetter}}</textarea>
+    </div>
+  </div>
+  <div class="form-actions">
+    <button class="btn btn-primary" type="submit">Enregistrer</button>
+    <a class="btn btn-ghost" href="{{if .IsNew}}/{{else}}/applications/{{$a.ID}}{{end}}">Annuler</a>
+  </div>
+</form>
+
+<datalist id="methods">{{range .Methods}}<option value="{{.}}">{{end}}</datalist>
+<datalist id="sources">{{range .Sources}}<option value="{{.}}">{{end}}</datalist>
+{{end}}

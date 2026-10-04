@@ -1,0 +1,215 @@
+{{define "title"}}{{.App.Company}}{{end}}
+{{define "content"}}
+{{$a := .App}}{{$row := .Row}}
+<div class="detail-head">
+  <a class="back" href="/">← Candidatures</a>
+  <div class="detail-title">
+    <div>
+      <h1>{{$a.Company}}</h1>
+      {{if $a.Title}}<p class="subtitle">{{$a.Title}}</p>{{end}}
+    </div>
+    <div class="detail-actions">
+      <form method="post" action="/applications/{{$a.ID}}/status" class="inline">
+        <label class="sr-only" for="d-status">Statut</label>
+        <select name="status" id="d-status" class="status-select st-{{$a.Status}} js-autosubmit">
+          {{range .Statuses}}<option value="{{.Code}}"{{if eq .Code $a.Status}} selected{{end}}>{{.Label}}</option>{{end}}
+        </select>
+        <noscript><button class="btn btn-small">OK</button></noscript>
+      </form>
+      <a class="btn" href="/applications/{{$a.ID}}/edit">Modifier</a>
+      <a class="btn" href="/new?from={{$a.ID}}" title="Nouvelle candidature chez la même entreprise">Dupliquer</a>
+      <form method="post" action="/applications/{{$a.ID}}/delete" class="inline" data-confirm="Supprimer définitivement cette candidature, ses sections et ses fichiers ?">
+        <button class="btn btn-danger">Supprimer</button>
+      </form>
+    </div>
+  </div>
+  {{if $row.Due}}<div class="alert alert-warn">Relance à faire{{if $a.NextStep}} : {{$a.NextStep}}{{end}}{{if $a.NextDate}} (prévue le {{fmtDate $a.NextDate}}){{else}} (candidature envoyée il y a {{$row.Days}} jours){{end}}.</div>{{end}}
+</div>
+
+<div class="detail-grid">
+  <div class="detail-main">
+
+    <section class="card" id="offer_text">
+      <header class="card-head">
+        <h2>Offre</h2>
+        <div class="card-tools">
+          {{if firstURL $a.URL}}
+          <form method="post" action="/applications/{{$a.ID}}/archive" class="inline">
+            <button class="btn btn-small" title="Télécharge la page (ou le PDF) de l'annonce et l'archive ici">Archiver depuis le lien</button>
+          </form>
+          {{end}}
+          <button type="button" class="btn btn-small" data-edit="offer">Modifier</button>
+        </div>
+      </header>
+      <div data-view="offer">
+        {{if $a.OfferText}}
+        <div class="text collapsible" data-collapsible>{{linkify $a.OfferText}}</div>
+        {{else}}
+        <p class="empty-inline">Pas encore de texte. Colle l'annonce ici{{if firstURL $a.URL}} ou clique sur « Archiver depuis le lien »{{end}} pour la garder même si la page est supprimée.</p>
+        {{end}}
+      </div>
+      <form method="post" action="/applications/{{$a.ID}}/text" data-editor="offer" hidden>
+        <input type="hidden" name="field" value="offer_text">
+        <textarea name="value" rows="18" aria-label="Texte de l'offre">{{$a.OfferText}}</textarea>
+        <div class="form-actions">
+          <button class="btn btn-primary">Enregistrer</button>
+          <button type="button" class="btn btn-ghost" data-cancel="offer">Annuler</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="card" id="cover_letter">
+      <header class="card-head">
+        <h2>Lettre de motivation</h2>
+        <div class="card-tools">
+          {{if $a.CoverLetter}}<span class="hint">{{words $a.CoverLetter}} mots · {{chars $a.CoverLetter}} caractères</span>
+          <button type="button" class="btn btn-small" data-copy="#letter-text">Copier</button>{{end}}
+          <button type="button" class="btn btn-small" data-edit="letter">Modifier</button>
+        </div>
+      </header>
+      <div data-view="letter">
+        {{if $a.CoverLetter}}
+        <div class="text collapsible" data-collapsible id="letter-text">{{$a.CoverLetter}}</div>
+        {{else}}
+        <p class="empty-inline">Aucune lettre enregistrée. Garde ici la version exacte envoyée (ou dépose le PDF dans les fichiers).</p>
+        {{end}}
+      </div>
+      <form method="post" action="/applications/{{$a.ID}}/text" data-editor="letter" hidden>
+        <input type="hidden" name="field" value="cover_letter">
+        <textarea name="value" rows="18" id="letter-edit" aria-label="Lettre de motivation">{{$a.CoverLetter}}</textarea>
+        <div class="form-actions">
+          <button class="btn btn-primary">Enregistrer</button>
+          <button type="button" class="btn btn-ghost" data-cancel="letter">Annuler</button>
+          <span class="hint counter" data-for="letter-edit"></span>
+        </div>
+      </form>
+    </section>
+
+    <section id="suivi" class="suivi">
+      <h2 class="section-title">Suivi <span class="muted">entretiens, tests, échanges…</span></h2>
+      {{$last := len $a.Sections}}
+      {{range $i, $s := $a.Sections}}
+      <article class="card sec kind-{{$s.Kind}}" id="section-{{$s.ID}}">
+        <header class="card-head">
+          <div class="sec-title">
+            <span class="kind">{{kindLabel $s.Kind}}</span>
+            <h3>{{$s.Title}}</h3>
+            {{if $s.EventDate}}<time class="sec-date{{if lt (eventDay $s.EventDate) $.Today}} past{{end}}">{{fmtEvent $s.EventDate}}</time>{{end}}
+          </div>
+          <div class="card-tools">
+            {{if gt $i 0}}<form method="post" action="/sections/{{$s.ID}}/move" class="inline"><input type="hidden" name="dir" value="up"><button class="icon-btn" title="Monter" aria-label="Monter">↑</button></form>{{end}}
+            {{if lt (add $i 1) $last}}<form method="post" action="/sections/{{$s.ID}}/move" class="inline"><input type="hidden" name="dir" value="down"><button class="icon-btn" title="Descendre" aria-label="Descendre">↓</button></form>{{end}}
+            <button type="button" class="btn btn-small" data-edit="s{{$s.ID}}">Modifier</button>
+            <form method="post" action="/sections/{{$s.ID}}/delete" class="inline" data-confirm="Supprimer la section « {{$s.Title}} » ?"><button class="icon-btn danger" title="Supprimer" aria-label="Supprimer">×</button></form>
+          </div>
+        </header>
+        <div data-view="s{{$s.ID}}">
+          {{if $s.Content}}<div class="text">{{linkify $s.Content}}</div>{{else}}<p class="empty-inline">Vide.</p>{{end}}
+        </div>
+        <form method="post" action="/sections/{{$s.ID}}" data-editor="s{{$s.ID}}" hidden class="sec-form">
+          <div class="sec-fields">
+            <div class="field"><label>Type</label>
+              <select name="kind">{{range $.SectionKinds}}<option value="{{.Code}}"{{if eq .Code $s.Kind}} selected{{end}}>{{.Label}}</option>{{end}}</select></div>
+            <div class="field grow"><label>Titre</label><input name="title" value="{{$s.Title}}"></div>
+            <div class="field"><label>Date</label><input type="date" name="event_date" value="{{eventDay $s.EventDate}}"></div>
+            <div class="field"><label>Heure</label><input type="time" name="event_time" value="{{eventTime $s.EventDate}}"></div>
+          </div>
+          <textarea name="content" rows="10" aria-label="Contenu">{{$s.Content}}</textarea>
+          <div class="form-actions">
+            <button class="btn btn-primary">Enregistrer</button>
+            <button type="button" class="btn btn-ghost" data-cancel="s{{$s.ID}}">Annuler</button>
+          </div>
+        </form>
+      </article>
+      {{end}}
+
+      <details class="card add-section"{{if not $a.Sections}} open{{end}}>
+        <summary>+ Ajouter une section</summary>
+        <form method="post" action="/applications/{{$a.ID}}/sections" class="sec-form" id="add-section">
+          <div class="sec-fields">
+            <div class="field"><label for="ns-kind">Type</label>
+              <select name="kind" id="ns-kind">{{range .SectionKinds}}<option value="{{.Code}}" data-template="{{.Template}}">{{.Label}}</option>{{end}}</select></div>
+            <div class="field grow"><label for="ns-title">Titre</label><input name="title" id="ns-title" placeholder="Ex. Entretien avec la manager data"></div>
+            <div class="field"><label for="ns-date">Date</label><input type="date" name="event_date" id="ns-date"></div>
+            <div class="field"><label for="ns-time">Heure</label><input type="time" name="event_time" id="ns-time"></div>
+          </div>
+          <textarea name="content" id="ns-content" rows="10" aria-label="Contenu"></textarea>
+          <div class="form-actions">
+            <button class="btn btn-primary">Ajouter</button>
+            <span class="hint">Un entretien ou un test fait avancer le statut automatiquement. Les sections datées apparaissent dans « À venir ».</span>
+          </div>
+        </form>
+      </details>
+    </section>
+  </div>
+
+  <aside class="detail-side">
+    <section class="card">
+      <h2>Informations</h2>
+      <dl class="info">
+        {{with urls $a.URL}}<dt>Lien{{if gt (len .) 1}}s{{end}}</dt><dd>{{range .}}<a href="{{.}}" target="_blank" rel="noopener" class="ext" title="{{.}}">{{host .}}</a>{{end}}</dd>{{end}}
+        {{with $a.Location}}<dt>Lieu</dt><dd>{{.}}</dd>{{end}}
+        {{with $a.Method}}<dt>Mode</dt><dd>{{.}}</dd>{{end}}
+        {{with $a.Source}}<dt>Source</dt><dd>{{.}}</dd>{{end}}
+        <dt>Candidature</dt><dd>{{if $a.AppliedOn}}{{fmtDate $a.AppliedOn}}{{if $row.HasDays}} <span class="muted">· il y a {{$row.Days}} j</span>{{end}}{{else}}<span class="muted">pas encore envoyée</span>{{end}}</dd>
+        {{with $a.Salary}}<dt>Salaire</dt><dd>{{.}} €/mois</dd>{{end}}
+        {{with $a.Duration}}<dt>Durée</dt><dd>{{.}} mois</dd>{{end}}
+        {{with $a.Contact}}<dt>Contact</dt><dd>{{contact .}}</dd>{{end}}
+        {{if or $a.NextStep $a.NextDate}}<dt>Prochaine étape</dt><dd>{{if $a.NextDate}}<span class="chip{{if $row.Due}} chip-late{{end}}">{{fmtDate $a.NextDate}}</span> {{end}}{{$a.NextStep}}</dd>{{end}}
+      </dl>
+    </section>
+
+    <section class="card" id="notes">
+      <header class="card-head">
+        <h2>Notes</h2>
+        <div class="card-tools"><button type="button" class="btn btn-small" data-edit="notes">Modifier</button></div>
+      </header>
+      <div data-view="notes">
+        {{if $a.Notes}}<div class="text">{{linkify $a.Notes}}</div>{{else}}<p class="empty-inline">Aucune note.</p>{{end}}
+      </div>
+      <form method="post" action="/applications/{{$a.ID}}/text" data-editor="notes" hidden>
+        <input type="hidden" name="field" value="notes">
+        <textarea name="value" rows="8" aria-label="Notes">{{$a.Notes}}</textarea>
+        <div class="form-actions">
+          <button class="btn btn-primary">Enregistrer</button>
+          <button type="button" class="btn btn-ghost" data-cancel="notes">Annuler</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="card" id="fichiers">
+      <h2>Fichiers</h2>
+      {{if $a.Attachments}}
+      <ul class="files">
+        {{range $a.Attachments}}
+        <li>
+          <a href="/attachments/{{.ID}}" target="_blank" rel="noopener" class="file-name">{{.Filename}}</a>
+          <span class="muted">{{if .Label}}{{.Label}} · {{end}}{{size .Size}}</span>
+          <span class="file-tools">
+            {{if isInline .ContentType}}<a href="/attachments/{{.ID}}?dl=1" class="icon-btn" title="Télécharger" aria-label="Télécharger">↓</a>{{end}}
+            <form method="post" action="/attachments/{{.ID}}/delete" class="inline" data-confirm="Supprimer le fichier « {{.Filename}} » ?"><button class="icon-btn danger" title="Supprimer" aria-label="Supprimer">×</button></form>
+          </span>
+        </li>
+        {{end}}
+      </ul>
+      {{else}}<p class="empty-inline">CV et lettre envoyés, PDF de l'offre, convocation…</p>{{end}}
+      <form method="post" action="/applications/{{$a.ID}}/attachments" enctype="multipart/form-data" class="upload">
+        <input type="file" name="file" multiple required aria-label="Fichiers">
+        <input name="label" placeholder="Libellé (optionnel) : CV envoyé, LM…" list="file-labels">
+        <button class="btn btn-small">Ajouter</button>
+        <datalist id="file-labels"><option value="CV envoyé"><option value="Lettre de motivation"><option value="Offre (PDF)"><option value="Convocation"><option value="Convention de stage"></datalist>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>Historique</h2>
+      <ol class="timeline">
+        {{range $a.History}}
+        <li><span class="dot st-{{.To}}"></span><span>{{if .From}}{{statusLabel .From}} → {{end}}<strong>{{statusLabel .To}}</strong></span><time class="muted">{{fmtDate .ChangedAt}}</time></li>
+        {{end}}
+      </ol>
+      <p class="hint">Créée le {{fmtDate $a.CreatedAt}} · modifiée le {{fmtDate $a.UpdatedAt}}</p>
+    </section>
+  </aside>
+</div>
+{{end}}
