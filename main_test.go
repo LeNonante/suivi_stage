@@ -146,21 +146,11 @@ func TestParseOfferHTMLFallback(t *testing.T) {
 	}
 }
 
-func TestCaptureSelectionWins(t *testing.T) {
-	info := offerFromCapture("https://x.test/o", "Data Engineer - ACME | Jobs", "menu\nTout le texte", "Le passage choisi", "[]")
-	if !strings.Contains(info.Text, "Le passage choisi") || strings.Contains(info.Text, "Tout le texte") {
-		t.Errorf("texte : %q", info.Text)
-	}
-	if info.Title != "Data Engineer - ACME" {
-		t.Errorf("titre : %q", info.Title)
-	}
-}
-
 // ---------- Parcours HTTP complet ----------
 
 func newTestServer(t *testing.T) (*Server, *httptest.Server) {
 	t.Helper()
-	cfg := Config{DataDir: t.TempDir(), RelanceDays: 14, NotifyHour: 9}
+	cfg := Config{DataDir: t.TempDir()}
 	s, err := newServer(cfg)
 	if err != nil {
 		t.Fatal(err)
@@ -239,9 +229,6 @@ func TestHTTPFlow(t *testing.T) {
 	if !strings.Contains(b, "Questions SQL") || !strings.Contains(b, "15/01/2099 à 14:30") {
 		t.Fatal("section absente")
 	}
-	if b := body(t, must(http.Get(ts.URL+"/"))); !strings.Contains(b, "À venir") {
-		t.Fatal("l'entretien n'apparaît pas dans « À venir »")
-	}
 
 	// Pièce jointe
 	var buf bytes.Buffer
@@ -310,13 +297,15 @@ func TestHTTPFlow(t *testing.T) {
 	}
 
 	// Pages annexes
-	for _, p := range []string{"/new", "/new?from=1", "/applications/1/edit", "/data", "/api/applications", "/api/applications/1"} {
+	for _, p := range []string{"/new", "/new?from=1", "/applications/1/edit", "/data"} {
 		if r := must(http.Get(ts.URL + p)); r.StatusCode != 200 {
 			t.Errorf("%s : %d", p, r.StatusCode)
 		}
 	}
-	if b := body(t, must(http.Get(ts.URL+"/data"))); !strings.Contains(b, `href="javascript:`) {
-		t.Error("marque-page non rendu (lien javascript: filtré ?)")
+	for _, p := range []string{"/api/applications", "/notify/test", "/capture"} {
+		if r := must(http.Get(ts.URL + p)); r.StatusCode != 404 && r.StatusCode != 405 {
+			t.Errorf("%s devrait avoir disparu : %d", p, r.StatusCode)
+		}
 	}
 
 	// Suppression
@@ -330,7 +319,7 @@ func TestHTTPFlow(t *testing.T) {
 }
 
 func TestBasicAuth(t *testing.T) {
-	cfg := Config{DataDir: t.TempDir(), AuthUser: "moi", AuthPass: "secret", RelanceDays: 14}
+	cfg := Config{DataDir: t.TempDir(), AuthUser: "moi", AuthPass: "secret"}
 	s, err := newServer(cfg)
 	if err != nil {
 		t.Fatal(err)
@@ -356,42 +345,6 @@ func must(r *http.Response, err error) *http.Response {
 		panic(err)
 	}
 	return r
-}
-
-func TestNtfyDigest(t *testing.T) {
-	var got struct{ title, body, auth string }
-	ntfy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		b, _ := io.ReadAll(r.Body)
-		got.title, got.body, got.auth = r.Header.Get("Title"), string(b), r.Header.Get("Authorization")
-	}))
-	defer ntfy.Close()
-	cfg := Config{DataDir: t.TempDir(), RelanceDays: 14, NtfyURL: ntfy.URL, NtfyToken: "tk_test"}
-	s, err := newServer(cfg)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer s.db.Close()
-	old := &Application{Company: "Renault", Title: "Data Engineer", Status: "envoyee", AppliedOn: addDays(today(), -20)}
-	recent := &Application{Company: "Thales", Status: "envoyee", AppliedOn: addDays(today(), -2)}
-	planned := &Application{Company: "SNCF", Status: "relancee", NextStep: "Rappeler la RH", NextDate: today()}
-	for _, a := range []*Application{old, recent, planned} {
-		if err := insertApplication(s.db, a); err != nil {
-			t.Fatal(err)
-		}
-	}
-	insertSection(s.db, &Section{ApplicationID: recent.ID, Kind: "entretien_rh", Title: "Entretien RH", EventDate: today() + "T14:30"})
-
-	title, body := s.digest()
-	if !strings.Contains(body, "Renault") || !strings.Contains(body, "envoyée il y a 20 j") || !strings.Contains(body, "Rappeler la RH") ||
-		!strings.Contains(body, "Thales — Entretien RH à 14:30") || strings.Contains(body, "Thales — Data") {
-		t.Fatalf("résumé :\n%s", body)
-	}
-	if err := s.sendNtfy(title, body); err != nil {
-		t.Fatal(err)
-	}
-	if got.auth != "Bearer tk_test" || !strings.Contains(got.title, "1 événement") || got.body != body {
-		t.Fatalf("ntfy a reçu : %+v", got)
-	}
 }
 
 func TestLoadDotEnv(t *testing.T) {

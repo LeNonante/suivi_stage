@@ -131,22 +131,8 @@ type Row struct {
 	*Application
 	Days    int
 	HasDays bool
-	Due     bool
 	Group   string
 	Link    string
-}
-
-// followUpDue : une relance est à faire ?
-//   - date de relance renseignée et atteinte, ou
-//   - candidature envoyée depuis RELANCE_DAYS jours sans date de relance.
-func followUpDue(a *Application, todayISO string, relanceDays int) bool {
-	if isClosed(a.Status) {
-		return false
-	}
-	if a.NextDate != "" {
-		return a.NextDate <= todayISO
-	}
-	return a.Status == "envoyee" && a.AppliedOn != "" && daysBetween(a.AppliedOn, todayISO) >= relanceDays
 }
 
 func (s *Server) buildRows(apps []*Application) ([]Row, map[string]int) {
@@ -158,11 +144,7 @@ func (s *Server) buildRows(apps []*Application) ([]Row, map[string]int) {
 		if a.AppliedOn != "" && !isClosed(a.Status) && a.Status != "a_postuler" {
 			r.Days, r.HasDays = daysBetween(a.AppliedOn, t), true
 		}
-		r.Due = followUpDue(a, t, s.cfg.RelanceDays)
 		counts[r.Group]++
-		if r.Due {
-			counts["due"]++
-		}
 		rows = append(rows, r)
 	}
 	return rows, counts
@@ -175,20 +157,7 @@ func (s *Server) handleList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	rows, counts := s.buildRows(apps)
-	events, err := upcomingEvents(s.db, today(), 8)
-	if err != nil {
-		s.serverError(w, r, err)
-		return
-	}
-	var due []Row
-	for _, row := range rows {
-		if row.Due {
-			due = append(due, row)
-		}
-	}
-	s.render(w, r, "list", map[string]any{
-		"Rows": rows, "Counts": counts, "Events": events, "DueRows": due, "RelanceDays": s.cfg.RelanceDays,
-	})
+	s.render(w, r, "list", map[string]any{"Rows": rows, "Counts": counts})
 }
 
 // ---------- Création / édition ----------
@@ -199,7 +168,7 @@ func appFromForm(r *http.Request) *Application {
 		Company: f("company"), Title: f("title"), URL: f("url"), Location: f("location"),
 		Method: f("method"), Source: f("source"), AppliedOn: parseLooseDate(f("applied_on")),
 		Salary: f("salary"), Duration: f("duration"), Contact: f("contact"), Status: f("status"),
-		NextStep: f("next_step"), NextDate: parseLooseDate(f("next_date")), Notes: r.FormValue("notes"),
+		NextStep: f("next_step"), Notes: r.FormValue("notes"),
 		OfferText: r.FormValue("offer_text"), CoverLetter: r.FormValue("cover_letter"),
 	}
 	if !validStatus(a.Status) {
@@ -211,7 +180,7 @@ func appFromForm(r *http.Request) *Application {
 func (s *Server) formPage(w http.ResponseWriter, r *http.Request, a *Application, isNew bool, errMsg string, extra map[string]any) {
 	data := map[string]any{
 		"App": a, "IsNew": isNew, "Error": errMsg,
-		"Methods": methodSuggestions, "Sources": sourceSuggestions, "RelanceDays": s.cfg.RelanceDays,
+		"Methods": methodSuggestions, "Sources": sourceSuggestions,
 	}
 	for k, v := range extra {
 		data[k] = v
@@ -245,22 +214,6 @@ func (s *Server) handleNew(w http.ResponseWriter, r *http.Request) {
 		a.Company = v
 	}
 	s.formPage(w, r, a, true, "", nil)
-}
-
-// handleCapture reçoit le formulaire posté par le marque-page (bookmarklet)
-// depuis la page d'une offre et affiche le formulaire de création pré-rempli.
-func (s *Server) handleCapture(w http.ResponseWriter, r *http.Request) {
-	r.Body = http.MaxBytesReader(w, r.Body, 8<<20)
-	if err := r.ParseForm(); err != nil {
-		s.fail(w, r, 400, "Capture trop volumineuse ou invalide.")
-		return
-	}
-	info := offerFromCapture(r.FormValue("url"), r.FormValue("title"), r.FormValue("text"), r.FormValue("selection"), r.FormValue("ld"))
-	a := &Application{
-		Status: "a_postuler", URL: strings.TrimSpace(r.FormValue("url")),
-		Title: info.Title, Company: info.Company, Location: info.Location, OfferText: info.Text,
-	}
-	s.formPage(w, r, a, true, "", map[string]any{"Captured": true})
 }
 
 func (s *Server) handleCreate(w http.ResponseWriter, r *http.Request) {
@@ -323,7 +276,7 @@ func (s *Server) handleUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a := appFromForm(r)
-	a.ID, a.CreatedAt = old.ID, old.CreatedAt
+	a.ID, a.CreatedAt, a.NextDate = old.ID, old.CreatedAt, old.NextDate
 	// Champs longs absents du formulaire : on garde l'existant.
 	if _, ok := r.PostForm["offer_text"]; !ok {
 		a.OfferText = old.OfferText
@@ -431,7 +384,7 @@ func (s *Server) handleDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	rows, _ := s.buildRows([]*Application{a})
-	s.render(w, r, "detail", map[string]any{"App": a, "Row": rows[0], "RelanceDays": s.cfg.RelanceDays})
+	s.render(w, r, "detail", map[string]any{"App": a, "Row": rows[0]})
 }
 
 // ---------- Sections ----------
@@ -740,31 +693,6 @@ func (s *Server) handleFetchOffer(w http.ResponseWriter, r *http.Request) {
 		out["existing_id"] = id
 	}
 	json.NewEncoder(w).Encode(out)
-}
-
-// ---------- API JSON ----------
-
-func (s *Server) handleAPIList(w http.ResponseWriter, r *http.Request) {
-	apps, err := listApplications(s.db)
-	if err != nil {
-		http.Error(w, err.Error(), 500)
-		return
-	}
-	if apps == nil {
-		apps = []*Application{}
-	}
-	writeJSON(w, apps)
-}
-
-func (s *Server) handleAPIGet(w http.ResponseWriter, r *http.Request) {
-	id, _ := pathID(r)
-	a, err := getApplication(s.db, id)
-	if err != nil {
-		http.Error(w, `{"error":"introuvable"}`, 404)
-		return
-	}
-	loadDetails(s.db, a)
-	writeJSON(w, a)
 }
 
 func writeJSON(w http.ResponseWriter, v any) {

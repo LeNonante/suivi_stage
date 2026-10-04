@@ -60,7 +60,7 @@ func statusRank(code string) int {
 	return len(statuses)
 }
 
-// isClosed : candidature terminée (plus de relance à faire).
+// isClosed : candidature terminée.
 func isClosed(code string) bool {
 	return code == "refusee" || code == "abandon" || code == "acceptee"
 }

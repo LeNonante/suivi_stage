@@ -115,39 +115,6 @@ func parseOfferHTML(page string) *OfferInfo {
 	return info
 }
 
-// offerFromCapture construit l'offre à partir de ce qu'envoie le marque-page.
-func offerFromCapture(pageURL, title, text, selection, ld string) *OfferInfo {
-	var blocks []string
-	json.Unmarshal([]byte(ld), &blocks)
-	info := jobPostingFrom(blocks)
-	if info == nil {
-		info = &OfferInfo{}
-	}
-	switch {
-	case strings.TrimSpace(selection) != "":
-		info.Body = tidyText(selection)
-	case info.Body != "":
-	default:
-		info.Body = tidyText(text)
-	}
-	if info.Title == "" {
-		info.Title = cleanTitle(title)
-	}
-	info.Text = archiveHeader(pageURL) + info.Body
-	return info
-}
-
-// cleanTitle : « Data Engineer H/F - Ippon | Hellowork » -> « Data Engineer H/F - Ippon ».
-func cleanTitle(t string) string {
-	t = cleanLine(t)
-	for _, sep := range []string{" | ", " – ", " — "} {
-		if i := strings.LastIndex(t, sep); i > 10 {
-			t = t[:i]
-		}
-	}
-	return t
-}
-
 func jobPostingFrom(blocks []string) *OfferInfo {
 	for _, b := range blocks {
 		var v any

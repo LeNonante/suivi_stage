@@ -23,7 +23,6 @@
       </form>
     </div>
   </div>
-  {{if $row.Due}}<div class="alert alert-warn">Relance à faire{{if $a.NextStep}} : {{$a.NextStep}}{{end}}{{if $a.NextDate}} (prévue le {{fmtDate $a.NextDate}}){{else}} (candidature envoyée il y a {{$row.Days}} jours){{end}}.</div>{{end}}
 </div>
 
 <div class="detail-grid">
@@ -136,7 +135,7 @@
           <textarea name="content" id="ns-content" rows="10" aria-label="Contenu"></textarea>
           <div class="form-actions">
             <button class="btn btn-primary">Ajouter</button>
-            <span class="hint">Un entretien ou un test fait avancer le statut automatiquement. Les sections datées apparaissent dans « À venir ».</span>
+            <span class="hint">Un entretien ou un test fait avancer le statut automatiquement.</span>
           </div>
         </form>
       </details>
@@ -155,7 +154,7 @@
         {{with $a.Salary}}<dt>Salaire</dt><dd>{{.}} €/mois</dd>{{end}}
         {{with $a.Duration}}<dt>Durée</dt><dd>{{.}} mois</dd>{{end}}
         {{with $a.Contact}}<dt>Contact</dt><dd>{{contact .}}</dd>{{end}}
-        {{if or $a.NextStep $a.NextDate}}<dt>Prochaine étape</dt><dd>{{if $a.NextDate}}<span class="chip{{if $row.Due}} chip-late{{end}}">{{fmtDate $a.NextDate}}</span> {{end}}{{$a.NextStep}}</dd>{{end}}
+        {{with $a.NextStep}}<dt>Prochaine étape</dt><dd>{{.}}</dd>{{end}}
       </dl>
     </section>
 

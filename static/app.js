@@ -52,6 +52,7 @@
     var hideClosed = $("#hide-closed");
     var countEl = $("#row-count");
     var filter = store("cand.filter") || "all";
+    if (!$('.kpi[data-filter="' + filter + '"]')) filter = "all";
     if (hideClosed) hideClosed.checked = store("cand.hideClosed") === "1";
 
     rows.forEach(function (r) { r._search = norm(r.getAttribute("data-search")); });
@@ -68,8 +69,7 @@
       var visible = 0;
       rows.forEach(function (r) {
         var ok = true;
-        if (filter === "due") ok = r.getAttribute("data-due") === "1";
-        else if (filter !== "all") ok = r.getAttribute("data-group") === filter;
+        if (filter !== "all") ok = r.getAttribute("data-group") === filter;
         if (ok && hideClosed && hideClosed.checked && filter === "all") ok = r.getAttribute("data-closed") !== "1";
         if (ok && q) ok = r._search.indexOf(q) !== -1;
         r.hidden = !ok;
@@ -82,11 +82,10 @@
     }
 
     function recount() {
-      var c = { total: rows.length, due: 0 };
+      var c = { total: rows.length };
       rows.forEach(function (r) {
         var g = r.getAttribute("data-group");
         c[g] = (c[g] || 0) + 1;
-        if (r.getAttribute("data-due") === "1") c.due++;
       });
       $$("[data-count]").forEach(function (el) { el.textContent = c[el.getAttribute("data-count")] || 0; });
     }
@@ -152,10 +151,6 @@
             tr.cells[sel.closest("td").cellIndex].setAttribute("data-v", sel.selectedIndex);
             var closed = res.status === "refusee" || res.status === "abandon";
             tr.setAttribute("data-closed", closed ? "1" : "");
-            if (closed || res.status === "acceptee") {
-              tr.setAttribute("data-due", "");
-              tr.classList.remove("is-due");
-            }
             recount();
             apply();
           })
@@ -263,7 +258,7 @@
     upd();
   });
 
-  var applied = $("#f-applied"), status = $("#f-status"), next = $("#f-next");
+  var applied = $("#f-applied"), status = $("#f-status");
 
   function todayISO() {
     var d = new Date();
@@ -278,19 +273,6 @@
     });
   }
 
-  // Bouton J+N : date de relance = date de candidature (ou aujourd'hui) + N jours.
-  var rb = $("#relance-btn");
-  if (rb && next) {
-    rb.addEventListener("click", function () {
-      var base = (applied && applied.value) || todayISO();
-      var d = new Date(base + "T12:00:00");
-      d.setDate(d.getDate() + parseInt(rb.getAttribute("data-days"), 10));
-      next.value = d.toISOString().slice(0, 10);
-      var step = $("#f-next-step");
-      if (step && !step.value) step.value = "Relancer";
-    });
-  }
-
   // Remplir depuis le lien
   var fb = $("#fetch-btn");
   if (fb) {
@@ -300,7 +282,7 @@
       if (!url) { msg.textContent = "Colle d'abord le lien de l'offre."; return; }
       fb.disabled = true;
       msg.textContent = "Récupération de la page…";
-      post("/api/fetch-offer", { url: url })
+      post("/fetch-offer", { url: url })
         .then(function (res) {
           var filled = [];
           var set = function (id, v, label) {

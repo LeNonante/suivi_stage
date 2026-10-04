@@ -69,13 +69,6 @@ type Attachment struct {
 	CreatedAt     string `json:"cree_le"`
 }
 
-// Event : section datée (entretien, test…) affichée dans « À venir ».
-type Event struct {
-	Section
-	Company  string
-	AppTitle string
-}
-
 var migrations = []string{
 	`CREATE TABLE applications (
 		id           INTEGER PRIMARY KEY,
@@ -428,29 +421,6 @@ func moveSection(db *sql.DB, id int64, dir int) error {
 		}
 	}
 	return tx.Commit()
-}
-
-// upcomingEvents : sections datées à partir d'aujourd'hui, candidatures non clôturées.
-func upcomingEvents(db execer, from string, limit int) ([]Event, error) {
-	rows, err := db.Query(`SELECT s.id, s.application_id, s.kind, s.title, s.event_date, s.content, s.position,
-		s.created_at, s.updated_at, a.company, a.title
-		FROM sections s JOIN applications a ON a.id = s.application_id
-		WHERE s.event_date >= ? AND a.status NOT IN ('refusee', 'abandon')
-		ORDER BY s.event_date LIMIT ?`, from, limit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var out []Event
-	for rows.Next() {
-		var e Event
-		if err := rows.Scan(&e.ID, &e.ApplicationID, &e.Kind, &e.Title, &e.EventDate, &e.Content, &e.Position,
-			&e.CreatedAt, &e.UpdatedAt, &e.Company, &e.AppTitle); err != nil {
-			return nil, err
-		}
-		out = append(out, e)
-	}
-	return out, rows.Err()
 }
 
 func touch(db execer, appID int64) {

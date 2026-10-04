@@ -55,7 +55,7 @@ func (s *Server) handleExportJSON(w http.ResponseWriter, r *http.Request) {
 
 var csvHeader = []string{"Entreprise", "Offre de stage", "Lien de l'offre", "Lieu", "Mode de candidature", "Source",
 	"Date de candidature", "Salaire (€/mois)", "Durée (mois)", "Contact", "Statut", "Prochaine étape / relance",
-	"Date de relance", "Notes", "Texte de l'offre", "Lettre de motivation"}
+	"Notes", "Texte de l'offre", "Lettre de motivation"}
 
 // handleExportCSV : CSV « à la française » (point-virgule + BOM) qui s'ouvre
 // directement dans Excel, et se ré-importe ici sans perte.
@@ -73,7 +73,7 @@ func (s *Server) handleExportCSV(w http.ResponseWriter, r *http.Request) {
 	cw.Write(csvHeader)
 	for _, a := range apps {
 		cw.Write([]string{a.Company, a.Title, a.URL, a.Location, a.Method, a.Source, fmtDate(a.AppliedOn),
-			a.Salary, a.Duration, a.Contact, statusDef(a.Status).Label, a.NextStep, fmtDate(a.NextDate),
+			a.Salary, a.Duration, a.Contact, statusDef(a.Status).Label, a.NextStep,
 			a.Notes, a.OfferText, a.CoverLetter})
 	}
 	cw.Flush()
@@ -211,7 +211,7 @@ func parseExportJSON(data []byte) (*ExportDoc, error) {
 	if err := json.Unmarshal(data, doc); err == nil && doc.Applications != nil {
 		return doc, nil
 	}
-	// Tableau simple (ex. sortie de /api/applications).
+	// Tableau simple de candidatures.
 	var list []*Application
 	if err := json.Unmarshal(data, &list); err != nil {
 		return nil, errors.New("JSON invalide : " + err.Error())
@@ -417,7 +417,7 @@ var headerAliases = map[string][]string{
 	"contact":      {"contact", "recruteur", "email", "interlocuteur"},
 	"status":       {"statut", "etat", "status"},
 	"next_step":    {"prochaine etape / relance", "prochaine etape", "relance", "next step", "action"},
-	"next_date":    {"date de relance", "date relance", "date prochaine etape", "a relancer le"},
+	"next_date":    {"date de relance", "date relance", "date prochaine etape", "a relancer le"}, // reconnue mais ignorée
 	"notes":        {"notes", "note", "commentaires", "commentaire", "remarques"},
 	"offer_text":   {"texte de l'offre", "texte offre", "description", "description de l'offre"},
 	"cover_letter": {"lettre de motivation", "lm", "lettre"},
@@ -449,8 +449,6 @@ func headerKey(cell string) string {
 	}
 	return bestField
 }
-
-var reDMYAnywhere = regexp.MustCompile(`\b(\d{1,2}/\d{1,2}/\d{2,4})\b`)
 
 // appsFromTable repère la ligne d'en-tête (celle qui contient « Entreprise »),
 // associe les colonnes par leur nom, puis convertit chaque ligne.
@@ -517,12 +515,6 @@ func appsFromTable(rows [][]string, links map[[2]int]string) ([]*Application, []
 		if rawDate != "" && a.AppliedOn == "" {
 			warns = append(warns, fmt.Sprintf("ligne %d (%s) : date « %s » non reconnue", i+1, a.Company, rawDate))
 			a.Notes = strings.TrimSpace(a.Notes + "\nDate indiquée : " + rawDate)
-		}
-		a.NextDate = parseLooseDate(get("next_date"))
-		if a.NextDate == "" {
-			if m := reDMYAnywhere.FindString(a.NextStep); m != "" {
-				a.NextDate = parseLooseDate(m)
-			}
 		}
 		a.Status = statusFromLabel(get("status"), a.AppliedOn != "")
 		out = append(out, a)

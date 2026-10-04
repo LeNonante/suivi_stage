@@ -7,32 +7,7 @@
 <section class="kpis" aria-label="Compteurs (cliquer pour filtrer)">
   <button type="button" class="kpi" data-filter="all" aria-pressed="true"><span class="kpi-label">Total</span><span class="kpi-value" data-count="total">{{.Counts.total}}</span></button>
   {{range .Groups}}<button type="button" class="kpi kpi-{{.Code}}" data-filter="{{.Code}}" aria-pressed="false"><span class="kpi-label">{{.Label}}</span><span class="kpi-value" data-count="{{.Code}}">{{index $.Counts .Code}}</span></button>
-  {{end}}<button type="button" class="kpi kpi-due" data-filter="due" aria-pressed="false"><span class="kpi-label">À relancer</span><span class="kpi-value" data-count="due">{{.Counts.due}}</span></button>
-</section>
-
-{{if or .Events .DueRows}}
-<section class="agenda">
-  {{if .Events}}
-  <div class="agenda-col">
-    <h2>À venir</h2>
-    <ul>
-      {{range .Events}}<li><a href="/applications/{{.ApplicationID}}#section-{{.ID}}"><span class="agenda-date">{{fmtEvent .EventDate}}</span> <strong>{{.Company}}</strong> · {{.Title}}</a></li>
-      {{end}}
-    </ul>
-  </div>
-  {{end}}
-  {{if .DueRows}}
-  <div class="agenda-col">
-    <h2>À relancer</h2>
-    <ul>
-      {{range .DueRows}}<li><a href="/applications/{{.ID}}"><strong>{{.Company}}</strong>{{if .Title}} · {{truncate .Title 45}}{{end}}</a>
-        <span class="muted">{{if .NextStep}}{{truncate .NextStep 50}}{{else if .NextDate}}prévu le {{fmtDate .NextDate}}{{else}}envoyée il y a {{.Days}} j{{end}}</span></li>
-      {{end}}
-    </ul>
-  </div>
-  {{end}}
-</section>
-{{end}}
+  {{end}}</section>
 
 {{if .Rows}}
 <div class="toolbar">
@@ -67,8 +42,8 @@
   </thead>
   <tbody>
   {{range .Rows}}
-    <tr data-id="{{.ID}}" data-group="{{.Group}}" data-closed="{{if or (eq .Status "refusee") (eq .Status "abandon")}}1{{end}}" data-due="{{if .Due}}1{{end}}"
-        data-search="{{.Company}} {{.Title}} {{.Location}} {{.Method}} {{.Source}} {{.Contact}} {{.NextStep}} {{.Notes}}"{{if .Due}} class="is-due"{{end}}>
+    <tr data-id="{{.ID}}" data-group="{{.Group}}" data-closed="{{if or (eq .Status "refusee") (eq .Status "abandon")}}1{{end}}"
+        data-search="{{.Company}} {{.Title}} {{.Location}} {{.Method}} {{.Source}} {{.Contact}} {{.NextStep}} {{.Notes}}">
       <td data-v="{{.Company}}" class="c-company"><a class="rowlink" href="/applications/{{.ID}}">{{.Company}}</a></td>
       <td data-v="{{.Title}}" class="c-title" title="{{.Title}}">{{.Title}}</td>
       <td data-v="{{.Link}}" class="c-link">{{with .Link}}<a href="{{.}}" target="_blank" rel="noopener" title="{{.}}">{{host .}}</a>{{end}}{{$n := len (urls .URL)}}{{if gt $n 1}} <span class="mini">+{{add $n -1}}</span>{{end}}</td>
@@ -84,7 +59,7 @@
         </select>
       </td>
       <td data-v="{{if .HasDays}}{{.Days}}{{end}}" class="num">{{if .HasDays}}{{.Days}}{{end}}</td>
-      <td data-v="{{.NextDate}}" class="c-next">{{if .NextDate}}<span class="chip{{if .Due}} chip-late{{end}}">{{fmtDate .NextDate}}</span> {{end}}{{.NextStep}}{{if and .Due (not .NextDate)}} <span class="chip chip-late">à relancer</span>{{end}}</td>
+      <td data-v="{{.NextStep}}" class="c-next">{{.NextStep}}</td>
       <td data-v="{{.Notes}}" class="c-notes" title="{{.Notes}}">{{truncate .Notes 90}}</td>
     </tr>
   {{end}}

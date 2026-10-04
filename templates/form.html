@@ -7,7 +7,6 @@
 </div>
 
 {{with .Error}}<div class="alert alert-error">{{.}}</div>{{end}}
-{{if .Captured}}<div class="alert alert-info">Offre capturée depuis la page. Vérifie les champs, complète si besoin, puis enregistre.</div>{{end}}
 <div class="alert alert-warn" id="existing-alert"{{if not .ExistingID}} hidden{{end}}>Ce lien figure déjà dans ta liste : <a id="existing-link" href="/applications/{{.ExistingID}}">ouvrir la candidature existante</a>.</div>
 
 <form method="post" action="{{if .IsNew}}/applications{{else}}/applications/{{$a.ID}}{{end}}" class="card form" id="app-form">
@@ -68,18 +67,10 @@
       <label for="f-contact">Contact</label>
       <input name="contact" id="f-contact" value="{{$a.Contact}}" placeholder="Nom, e-mail ou lien">
     </div>
-    <div class="field">
+    <div class="field span-2">
       <label for="f-next-step">Prochaine étape / relance</label>
       <input name="next_step" id="f-next-step" value="{{$a.NextStep}}" placeholder="Ex. relancer par mail">
     </div>
-    <div class="field">
-      <label for="f-next">Date de relance</label>
-      <div class="input-row">
-        <input type="date" name="next_date" id="f-next" value="{{$a.NextDate}}">
-        <button type="button" class="btn btn-small" id="relance-btn" data-days="{{.RelanceDays}}" title="Date de candidature + {{.RelanceDays}} jours">J+{{.RelanceDays}}</button>
-      </div>
-    </div>
-
     <div class="field span-all">
       <label for="f-notes">Notes</label>
       <textarea name="notes" id="f-notes" rows="3" class="autogrow">{{$a.Notes}}</textarea>

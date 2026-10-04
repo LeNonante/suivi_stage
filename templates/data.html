@@ -48,26 +48,6 @@
       <li><a class="btn" href="/export.csv" download>Export CSV (Excel)</a> <span class="muted">une ligne par candidature, s'ouvre directement dans Excel</span></li>
       <li><a class="btn" href="/backup.zip" download>Sauvegarde complète (.zip)</a> <span class="muted">JSON + fichiers joints, se ré-importe ici</span></li>
     </ul>
-    <p class="hint">API en lecture : <a href="/api/applications">/api/applications</a> et <code>/api/applications/{id}</code>.</p>
-  </section>
-
-  <section class="card">
-    <h2>Marque-page « Capturer l'offre »</h2>
-    <p>Glisse ce bouton dans ta barre de favoris :</p>
-    <p><a class="btn btn-accent bookmarklet" href="{{.Bookmarklet}}" onclick="alert('Glisse ce bouton dans ta barre de favoris, puis clique dessus depuis la page d\'une offre.'); return false;">＋ Capturer l'offre</a></p>
-    <p>Sur la page d'une annonce (Workday, Hellowork, WTTJ, LinkedIn…), clique dessus : un nouvel onglet s'ouvre avec le formulaire pré-rempli (lien, poste, entreprise, lieu) et le <strong>texte de l'offre archivé</strong>. Si tu sélectionnes un passage avant de cliquer, seul ce passage est gardé.</p>
-    <p class="hint">Le marque-page pointe vers <code>{{.Base}}</code>. Si tu changes d'adresse (domaine, Tailscale…), recrée-le depuis cette page. Quelques sites bloquent l'envoi de formulaires vers un autre domaine : dans ce cas, utilise « Remplir depuis le lien » ou copie-colle le texte.</p>
-  </section>
-
-  <section class="card">
-    <h2>Rappels</h2>
-    <p>Une relance est proposée quand sa date est atteinte, ou {{.RelanceDays}} jours après l'envoi s'il n'y en a pas (<code>RELANCE_DAYS</code>).</p>
-    {{if .Ntfy}}
-    <p>Notification ntfy chaque jour à {{.NotifyHour}} h vers <code>{{.Ntfy}}</code> s'il y a des relances ou des entretiens.</p>
-    <form method="post" action="/notify/test"><button class="btn">Envoyer une notification de test</button></form>
-    {{else}}
-    <p class="muted">Notifications désactivées. Renseigne <code>NTFY_URL</code> dans le docker-compose pour recevoir chaque matin les relances et entretiens du jour sur ton téléphone.</p>
-    {{end}}
   </section>
 
   <section class="card">

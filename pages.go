@@ -1,15 +1,10 @@
 package main
 
 import (
-	"html/template"
 	"net/http"
 	"sort"
 	"strings"
 )
-
-// Le marque-page envoie l'URL, le titre, le texte visible, la sélection et
-// les blocs JSON-LD de la page courante vers /capture (nouvel onglet).
-const bookmarkletJS = `javascript:(function(){var f=document.createElement('form');f.method='POST';f.action='%BASE%/capture';f.target='_blank';f.acceptCharset='UTF-8';var ld=[].map.call(document.querySelectorAll('script[type="application/ld+json"]'),function(s){return s.textContent});var d={url:location.href,title:document.title,text:(document.body.innerText||'').slice(0,300000),selection:String(window.getSelection()),ld:JSON.stringify(ld)};for(var k in d){var i=document.createElement('textarea');i.name=k;i.value=d[k];f.appendChild(i)}f.style.display='none';document.body.appendChild(f);f.submit();setTimeout(function(){f.remove()},2000)})();`
 
 type statLine struct {
 	Label     string
@@ -111,15 +106,11 @@ func (s *Server) handleDataPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	avg, avgN := s.avgResponseDays(apps)
-	base := s.baseURL(r)
 	s.render(w, r, "data", map[string]any{
 		"Total": len(apps), "Sent": sent, "Responded": responded, "Rate": rate(responded, sent),
 		"AvgDays": avg, "AvgN": avgN,
-		"ByMethod":    breakdown(apps, func(a *Application) string { return a.Method }),
-		"BySource":    breakdown(apps, func(a *Application) string { return a.Source }),
-		"Bookmarklet": template.URL(strings.ReplaceAll(bookmarkletJS, "%BASE%", base)),
-		"Base":        base,
-		"Ntfy":        s.cfg.NtfyURL, "NotifyHour": s.cfg.NotifyHour,
-		"Auth": s.cfg.AuthUser != "", "RelanceDays": s.cfg.RelanceDays,
+		"ByMethod": breakdown(apps, func(a *Application) string { return a.Method }),
+		"BySource": breakdown(apps, func(a *Application) string { return a.Source }),
+		"Auth":     s.cfg.AuthUser != "",
 	})
 }

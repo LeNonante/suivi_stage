@@ -24,15 +24,10 @@ var templateFS embed.FS
 var staticFS embed.FS
 
 type Config struct {
-	Addr        string
-	DataDir     string
-	BaseURL     string
-	AuthUser    string
-	AuthPass    string
-	NtfyURL     string
-	NtfyToken   string
-	NotifyHour  int
-	RelanceDays int
+	Addr     string
+	DataDir  string
+	AuthUser string
+	AuthPass string
 }
 
 type Server struct {
@@ -58,15 +53,10 @@ func envInt(key string, def int) int {
 
 func loadConfig() Config {
 	return Config{
-		Addr:        env("ADDR", ":8080"),
-		DataDir:     env("DATA_DIR", "./data"),
-		BaseURL:     strings.TrimRight(env("BASE_URL", ""), "/"),
-		AuthUser:    env("AUTH_USER", ""),
-		AuthPass:    env("AUTH_PASSWORD", ""),
-		NtfyURL:     env("NTFY_URL", ""),
-		NtfyToken:   env("NTFY_TOKEN", ""),
-		NotifyHour:  envInt("NOTIFY_HOUR", 9),
-		RelanceDays: envInt("RELANCE_DAYS", 14),
+		Addr:     env("ADDR", ":8080"),
+		DataDir:  env("DATA_DIR", "./data"),
+		AuthUser: env("AUTH_USER", ""),
+		AuthPass: env("AUTH_PASSWORD", ""),
 	}
 }
 
@@ -111,7 +101,6 @@ func main() {
 	if cfg.AuthUser == "" {
 		log.Println("⚠ aucune authentification (AUTH_USER / AUTH_PASSWORD) : ne pas exposer sur Internet tel quel")
 	}
-	s.startNotifier()
 
 	srv := &http.Server{
 		Addr:              cfg.Addr,
@@ -130,7 +119,6 @@ func (s *Server) routes() http.Handler {
 
 	mux.HandleFunc("GET /{$}", s.handleList)
 	mux.HandleFunc("GET /new", s.handleNew)
-	mux.HandleFunc("POST /capture", s.handleCapture)
 	mux.HandleFunc("POST /applications", s.handleCreate)
 	mux.HandleFunc("GET /applications/{id}", s.handleDetail)
 	mux.HandleFunc("GET /applications/{id}/edit", s.handleEdit)
@@ -152,11 +140,7 @@ func (s *Server) routes() http.Handler {
 	mux.HandleFunc("GET /export.csv", s.handleExportCSV)
 	mux.HandleFunc("GET /backup.zip", s.handleBackup)
 	mux.HandleFunc("POST /import", s.handleImport)
-	mux.HandleFunc("POST /notify/test", s.handleNotifyTest)
-
-	mux.HandleFunc("GET /api/applications", s.handleAPIList)
-	mux.HandleFunc("GET /api/applications/{id}", s.handleAPIGet)
-	mux.HandleFunc("POST /api/fetch-offer", s.handleFetchOffer)
+	mux.HandleFunc("POST /fetch-offer", s.handleFetchOffer)
 
 	return s.logRequests(s.securityHeaders(s.basicAuth(s.sameOrigin(mux))))
 }
@@ -190,11 +174,10 @@ func (s *Server) basicAuth(next http.Handler) http.Handler {
 	})
 }
 
-// sameOrigin bloque les POST venant d'un autre site (protection CSRF),
-// sauf /capture qui ne fait qu'afficher un formulaire pré-rempli.
+// sameOrigin bloque les POST venant d'un autre site (protection CSRF).
 func (s *Server) sameOrigin(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodPost && r.URL.Path != "/capture" {
+		if r.Method == http.MethodPost {
 			if r.Header.Get("Sec-Fetch-Site") == "cross-site" {
 				http.Error(w, "Requête d'un autre site refusée", http.StatusForbidden)
 				return
@@ -243,20 +226,4 @@ func (s *Server) logRequests(next http.Handler) http.Handler {
 		next.ServeHTTP(rec, r)
 		log.Printf("%s %s %d %s", r.Method, r.URL.Path, rec.code, time.Since(start).Round(time.Millisecond))
 	})
-}
-
-// baseURL : BASE_URL si défini, sinon déduit de la requête (reverse proxy compris).
-func (s *Server) baseURL(r *http.Request) string {
-	if s.cfg.BaseURL != "" {
-		return s.cfg.BaseURL
-	}
-	scheme := "http"
-	if r.TLS != nil || strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https") {
-		scheme = "https"
-	}
-	host := r.Host
-	if fh := r.Header.Get("X-Forwarded-Host"); fh != "" {
-		host = fh
-	}
-	return scheme + "://" + host
 }
